@@ -35,7 +35,7 @@ col_logo, col_judul = st.columns([1, 4])
 with col_logo:
     # --- LOGO ---
     try:
-        st.image("POSIND_Logo_1. Warna (2) (2).png", width=130) 
+        st.image("logo.png", width=130) 
     except:
         st.image("https://upload.wikimedia.org/wikipedia/commons/thumb/9/96/Logo_Pos_Indonesia_%282023%29.png/640px-Logo_Pos_Indonesia_%282023%29.png", width=130)
 
