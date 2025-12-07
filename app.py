@@ -40,12 +40,18 @@ with col_logo:
         st.image("https://upload.wikimedia.org/wikipedia/commons/thumb/9/96/Logo_Pos_Indonesia_%282023%29.png/640px-Logo_Pos_Indonesia_%282023%29.png", width=130)
 
 with col_judul:
-    # --- JUDUL BARU ---
+    # --- JUDUL & KETERANGAN WILAYAH ---
     st.markdown("""
     <div style="margin-top: 5px;">
         <h3 style="margin-bottom: 5px; line-height: 1.2;">
             Cek Penerima Bantuan Langsung Tunai Sementara Kesejahteraan Rakyat (BLTS KESRA)
         </h3>
+        
+        <p style="font-size: 13px; margin-top: 8px; margin-bottom: 8px; color: #444;">
+            Website ini disediakan khusus untuk cek NIK Penerima Bantuan di wilayah 
+            <b>Kota Batam, Kabupaten Karimun, dan Kabupaten Pelalawan (Kecamatan Kuala Kampar)</b>
+        </p>
+        
         <p style="font-size: 14px; color: #FF6F00; font-weight: bold; margin-top: 5px;">
             Disediakan oleh PT Pos Indonesia (Persero)<br>
             Kantor Cabang Utama Batam 29400
@@ -62,16 +68,19 @@ st.markdown("---")
 # --- LOAD DATA ---
 @st.cache_data
 def load_data():
+    # Pastikan nama file ini sesuai dengan file Excel yang Anda upload ke GitHub/Folder
     file_path = "Belum Terbayar 07 Desember 2025 pukul 06.00.xlsx"
     try:
         xls = pd.ExcelFile(file_path)
         target_sheet = None
         header_row = 0
         
+        # Logika mencari sheet yang benar (bukan sheet pivot/kosong)
         for sheet in xls.sheet_names:
             df_tmp = pd.read_excel(xls, sheet_name=sheet, header=None, nrows=10)
             for i, row in df_tmp.iterrows():
                 row_str = row.astype(str).str.lower().tolist()
+                # Kunci pencarian sheet: harus ada kolom 'nik' dan 'nama'
                 if any('nik' in s for s in row_str) and any('nama' in s for s in row_str):
                     target_sheet = sheet
                     header_row = i
