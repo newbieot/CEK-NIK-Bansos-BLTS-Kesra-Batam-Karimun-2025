@@ -39,7 +39,7 @@ with col2:
         st.image("https://upload.wikimedia.org/wikipedia/commons/thumb/9/96/Logo_Pos_Indonesia_%282023%29.png/640px-Logo_Pos_Indonesia_%282023%29.png", width=250)
 
 # --- 2. JUDUL & INFORMASI INSTANSI (YANG DIUBAH) ---
-st.markdown("<h2 style='text-align: center;'>Cek Bansos Kesejahteraan Rakyat</h2>", unsafe_allow_html=True)
+st.markdown("<h2 style='text-align: center;'>Cek Bantuan Langsung Tunai Sementara Kesejahteraan Rakyat (BLTS KESRA) - Pos Indonesia KCU Batam</h2>", unsafe_allow_html=True)
 
 # --- INI BAGIAN YANG ANDA MINTA UBAH ---
 st.markdown("""
@@ -127,3 +127,4 @@ if st.button("🔍 CEK STATUS SAYA", type="primary", use_container_width=True):
 # --- FOOTER ---
 st.markdown("---")
 st.caption("© 2025 PT Pos Indonesia (Persero) KCU Batam 29400")
+
