@@ -1,10 +1,10 @@
 import streamlit as st
 import pandas as pd
-from PIL import Image # Library untuk mengolah gambar
+from PIL import Image
 
 # --- KONFIGURASI HALAMAN ---
 st.set_page_config(
-    page_title="Cek Bansos Batam & Karimun",
+    page_title="Cek Bantuan Langsung Tunai Sementara Kesejahteraan Rakyat (BLTS KESRA) - Pos Indonesia KCU Batam",
     page_icon="📮",
     layout="centered"
 )
@@ -30,30 +30,31 @@ def sensor_teks(teks):
 # BAGIAN TAMPILAN (UI)
 # ==========================================
 
-# --- 1. MENAMPILKAN LOGO DI TENGAH ---
-# Kita bagi layar jadi 3 kolom: Kiri (kosong), Tengah (Logo), Kanan (kosong)
+# --- 1. LOGO ---
 col1, col2, col3 = st.columns([1, 2, 1])
-
 with col2:
-    # GANTI 'logo.png' DENGAN NAMA FILE LOGO ANDA
-    # Jika belum upload gambar, kode ini akan pakai link logo Pos dari internet otomatis
     try:
         st.image("POSIND_Logo_1. Warna (2) (2).png", use_container_width=True)
     except:
-        # Cadangan: Pakai logo Pos Indonesia dari Wikipedia jika file lokal tidak ada
         st.image("https://upload.wikimedia.org/wikipedia/commons/thumb/9/96/Logo_Pos_Indonesia_%282023%29.png/640px-Logo_Pos_Indonesia_%282023%29.png", width=250)
 
-# --- JUDUL & HEADER ---
+# --- 2. JUDUL & INFORMASI INSTANSI (YANG DIUBAH) ---
 st.markdown("<h2 style='text-align: center;'>Cek Bansos Kesejahteraan Rakyat</h2>", unsafe_allow_html=True)
-st.markdown("<p style='text-align: center;'>Website ini disediakan oleh PT Pos Indonesia (Persero) Kantor Cabang Utama Batam 29400</p>", unsafe_allow_html=True)
+
+# --- INI BAGIAN YANG ANDA MINTA UBAH ---
+st.markdown("""
+    <p style='text-align: center; font-weight: bold; color: #FF6F00;'>
+    Website ini disediakan oleh PT Pos Indonesia (Persero)<br>
+    Kantor Cabang Utama Batam 29400
+    </p>
+    """, unsafe_allow_html=True)
+
 st.markdown("---")
 
 # --- LOAD DATA ---
 @st.cache_data
 def load_data():
-    # Pastikan nama file Excel sesuai
     file_path = "Belum Terbayar 07 Desember 2025 pukul 06.00.xlsx"
-    
     try:
         xls = pd.ExcelFile(file_path)
         target_sheet = None
@@ -81,11 +82,10 @@ def load_data():
     except Exception as e:
         return None
 
-# Load Data
 df = load_data()
 
 if df is None:
-    st.error("⚠️ Database sedang dalam pemeliharaan atau file belum diupload.")
+    st.error("⚠️ Database belum siap. Mohon hubungi admin Pos Indonesia Batam.")
     st.stop()
 
 # --- FORM PENCARIAN ---
@@ -99,7 +99,6 @@ if st.button("🔍 CEK STATUS SAYA", type="primary", use_container_width=True):
         hasil = df[df['NIK'] == nik_input]
         
         if not hasil.empty:
-            # --- JIKA DITEMUKAN ---
             data = hasil.iloc[0]
             nama_sensor = sensor_teks(data['Nama'])
             alamat_sensor = sensor_teks(data['Alamat'])
@@ -122,12 +121,9 @@ if st.button("🔍 CEK STATUS SAYA", type="primary", use_container_width=True):
             """)
             
         else:
-            # --- JIKA TIDAK DITEMUKAN ---
             st.error("❌ Mohon Maaf, NIK Tidak Ditemukan.")
             st.write("NIK Anda belum terdaftar sebagai penerima bantuan pada tahap ini.")
 
 # --- FOOTER ---
 st.markdown("---")
-st.caption("© 2025 Pos Indonesia - Penyaluran Bansos")
-
-
+st.caption("© 2025 PT Pos Indonesia (Persero) KCU Batam 29400")
