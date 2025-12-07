@@ -45,7 +45,7 @@ with col2:
 
 # --- JUDUL & HEADER ---
 st.markdown("<h2 style='text-align: center;'>Cek Bansos Kesejahteraan Rakyat</h2>", unsafe_allow_html=True)
-st.markdown("<p style='text-align: center;'>Pemerintah Kota Batam & Kabupaten Karimun T.A 2025</p>", unsafe_allow_html=True)
+st.markdown("<p style='text-align: center;'>Website ini disediakan oleh PT Pos Indonesia (Persero) Kantor Cabang Utama Batam 29400</p>", unsafe_allow_html=True)
 st.markdown("---")
 
 # --- LOAD DATA ---
@@ -129,4 +129,5 @@ if st.button("🔍 CEK STATUS SAYA", type="primary", use_container_width=True):
 # --- FOOTER ---
 st.markdown("---")
 st.caption("© 2025 Pos Indonesia - Penyaluran Bansos")
+
 
