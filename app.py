@@ -2,9 +2,9 @@ import streamlit as st
 import pandas as pd
 from PIL import Image
 
-# --- KONFIGURASI HALAMAN ---
+# --- KONFIGURASI HALAMAN (WAJIB PALING ATAS) ---
 st.set_page_config(
-    page_title="Cek Bantuan Langsung Tunai Sementara Kesejahteraan Rakyat (BLTS KESRA) - Pos Indonesia KCU Batam",
+    page_title="Cek Bansos - Pos Indonesia KCU Batam",
     page_icon="📮",
     layout="centered"
 )
@@ -27,29 +27,39 @@ def sensor_teks(teks):
     return " ".join(hasil)
 
 # ==========================================
-# BAGIAN TAMPILAN (UI)
+# BAGIAN HEADER (LOGO KIRI & JUDUL KANAN)
 # ==========================================
 
-# --- 1. LOGO ---
-col1, col2, col3 = st.columns([1, 2, 1])
-with col2:
+# Kita bagi layar atas menjadi 2 kolom dengan perbandingan 1 : 4
+# Kolom 1 (Kecil) untuk Logo, Kolom 2 (Besar) untuk Teks
+col_logo, col_judul = st.columns([1, 4])
+
+with col_logo:
+    # --- LOGO DI KIRI ATAS ---
+    # width=130 mengatur agar logo kecil & proporsional (tidak raksasa)
     try:
-        st.image("POSIND_Logo_1. Warna (2) (2).png", use_container_width=True)
+        st.image("POSIND_Logo_1. Warna (2) (2).png", width=130) 
     except:
-        st.image("https://upload.wikimedia.org/wikipedia/commons/thumb/9/96/Logo_Pos_Indonesia_%282023%29.png/640px-Logo_Pos_Indonesia_%282023%29.png", width=250)
+        st.image("https://upload.wikimedia.org/wikipedia/commons/thumb/9/96/Logo_Pos_Indonesia_%282023%29.png/640px-Logo_Pos_Indonesia_%282023%29.png", width=130)
 
-# --- 2. JUDUL & INFORMASI INSTANSI (YANG DIUBAH) ---
-st.markdown("<h2 style='text-align: center;'>Cek Bantuan Langsung Tunai Sementara Kesejahteraan Rakyat (BLTS KESRA) - Pos Indonesia KCU Batam</h2>", unsafe_allow_html=True)
-
-# --- INI BAGIAN YANG ANDA MINTA UBAH ---
-st.markdown("""
-    <p style='text-align: center; font-weight: bold; color: #FF6F00;'>
-    Website ini disediakan oleh PT Pos Indonesia (Persero)<br>
-    Kantor Cabang Utama Batam 29400
-    </p>
+with col_judul:
+    # --- JUDUL DI SEBELAH KANAN LOGO ---
+    # Menggunakan HTML agar jarak antar baris lebih rapi
+    st.markdown("""
+    <div style="margin-top: 10px;">
+        <h3 style="margin-bottom: 0px;">Cek Bansos Kesejahteraan Rakyat</h3>
+        <p style="font-size: 14px; color: #FF6F00; font-weight: bold; margin-top: 5px;">
+            Disediakan oleh PT Pos Indonesia (Persero)<br>
+            Kantor Cabang Utama Batam 29400
+        </p>
+    </div>
     """, unsafe_allow_html=True)
 
 st.markdown("---")
+
+# ==========================================
+# LOGIKA PROGRAM (SAMA SEPERTI SEBELUMNYA)
+# ==========================================
 
 # --- LOAD DATA ---
 @st.cache_data
@@ -127,4 +137,3 @@ if st.button("🔍 CEK STATUS SAYA", type="primary", use_container_width=True):
 # --- FOOTER ---
 st.markdown("---")
 st.caption("© 2025 PT Pos Indonesia (Persero) KCU Batam 29400")
-
