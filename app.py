@@ -1,6 +1,5 @@
 import streamlit as st
 import pandas as pd
-from PIL import Image
 
 # --- KONFIGURASI HALAMAN ---
 st.set_page_config(
@@ -11,6 +10,7 @@ st.set_page_config(
 
 # --- FUNGSI SENSOR (MASKING) ---
 def sensor_teks(teks):
+    """Menyensor sebagian huruf (BUDI -> B***)"""
     teks = str(teks).strip().upper()
     if len(teks) <= 2:
         return teks
@@ -30,13 +30,16 @@ def sensor_teks(teks):
 # BAGIAN HEADER (LOGO KIRI & JUDUL KANAN)
 # ==========================================
 
+# Bagi layar atas: Logo (Kecil) dan Teks (Besar)
 col_logo, col_judul = st.columns([1, 4])
 
 with col_logo:
-    # --- LOGO ---
+    # --- LOGO POS ---
     try:
-        st.image("logo.png", width=130) 
+        # Pastikan file logo.png ada di folder yang sama
+        st.image("POSIND_Logo_1. Warna (2) (2).png", width=130) 
     except:
+        # Cadangan jika file tidak ada
         st.image("https://upload.wikimedia.org/wikipedia/commons/thumb/9/96/Logo_Pos_Indonesia_%282023%29.png/640px-Logo_Pos_Indonesia_%282023%29.png", width=130)
 
 with col_judul:
@@ -62,35 +65,40 @@ with col_judul:
 st.markdown("---")
 
 # ==========================================
-# LOGIKA PROGRAM
+# LOGIKA PROGRAM (SMART DETECTOR)
 # ==========================================
 
 # --- LOAD DATA ---
 @st.cache_data
 def load_data():
-    # Pastikan nama file ini sesuai dengan file Excel yang Anda upload ke GitHub/Folder
     file_path = "Belum Terbayar 07 Desember 2025 pukul 06.00.xlsx"
     try:
         xls = pd.ExcelFile(file_path)
         target_sheet = None
         header_row = 0
         
-        # Logika mencari sheet yang benar (bukan sheet pivot/kosong)
+        # --- LOOPING CARI SHEET YANG BENAR ---
+        # Script akan membuka setiap sheet dan mencari kolom 'NIK' & 'NAMA'
         for sheet in xls.sheet_names:
+            # Baca 10 baris pertama tiap sheet
             df_tmp = pd.read_excel(xls, sheet_name=sheet, header=None, nrows=10)
+            
             for i, row in df_tmp.iterrows():
                 row_str = row.astype(str).str.lower().tolist()
-                # Kunci pencarian sheet: harus ada kolom 'nik' dan 'nama'
+                # Kunci: Harus ada kata 'nik' dan 'nama' di baris tersebut
                 if any('nik' in s for s in row_str) and any('nama' in s for s in row_str):
                     target_sheet = sheet
                     header_row = i
                     break
             if target_sheet: break
         
+        # Jika sheet ketemu, baru load datanya
         if target_sheet:
             df = pd.read_excel(xls, sheet_name=target_sheet, header=header_row)
-            df.columns = df.columns.str.strip()
+            df.columns = df.columns.str.strip() # Hapus spasi di nama kolom
+            
             if 'NIK' in df.columns:
+                # Bersihkan NIK dari karakter aneh dan '.0'
                 df['NIK'] = df['NIK'].astype(str).str.replace("'", "").str.replace("nan", "").str.strip()
                 df['NIK'] = df['NIK'].apply(lambda x: x.split('.')[0])
             return df
@@ -101,22 +109,28 @@ def load_data():
 
 df = load_data()
 
+# Jika data gagal dimuat
 if df is None:
-    st.error("⚠️ Database belum siap. Mohon hubungi admin Pos Indonesia Batam.")
+    st.error("⚠️ Sistem sedang sibuk atau File Database belum terdeteksi.")
+    st.info("Pastikan file Excel sudah diupload dengan nama: Belum Terbayar 07 Desember 2025 pukul 06.00.xlsx")
     st.stop()
 
 # --- FORM PENCARIAN ---
-st.info("Masukkan Nomor Induk Kependudukan (NIK) Anda untuk pengecekan.")
+st.info("Silakan masukkan Nomor Induk Kependudukan (NIK) Anda.")
 nik_input = st.text_input("NIK (Sesuai KTP):", max_chars=16)
 
 if st.button("🔍 CEK STATUS SAYA", type="primary", use_container_width=True):
     if not nik_input:
         st.warning("Mohon isi NIK terlebih dahulu.")
     else:
+        # Cari Data
         hasil = df[df['NIK'] == nik_input]
         
         if not hasil.empty:
+            # --- JIKA DATA DITEMUKAN (BERHAK) ---
             data = hasil.iloc[0]
+            
+            # Lakukan Sensor (Masking)
             nama_sensor = sensor_teks(data['Nama'])
             alamat_sensor = sensor_teks(data['Alamat'])
             kecamatan = data['Kecamatan']
@@ -124,22 +138,26 @@ if st.button("🔍 CEK STATUS SAYA", type="primary", use_container_width=True):
             
             st.success("✅ SELAMAT! ANDA TERDAFTAR SEBAGAI PENERIMA.")
             
+            # Tampilkan Data Tersensor
             with st.container(border=True):
-                st.markdown(f"**NAMA:** \n### {nama_sensor}")
+                st.markdown(f"**NAMA PENERIMA:** \n### {nama_sensor}")
                 st.markdown(f"**ALAMAT:** \n{alamat_sensor}")
                 st.markdown(f"**WILAYAH:** \n{kelurahan}, {kecamatan}")
             
+            # Instruksi
             st.warning("""
             **📢 INSTRUKSI PENGAMBILAN DI KANTOR POS:**
             
-            Silakan datang ke **Kantor Pos Terdekat** dengan membawa:
+            Silakan datang ke **Kantor Pos Terdekat** (Sesuai Domisili/Jadwal) dengan membawa:
             1. **KTP Asli** (Elektronik)
             2. **Kartu Keluarga (KK) Asli**
             """)
             
         else:
+            # --- JIKA TIDAK DITEMUKAN ---
             st.error("❌ Mohon Maaf, NIK Tidak Ditemukan.")
             st.write("NIK Anda belum terdaftar sebagai penerima bantuan pada tahap ini.")
+            st.caption("Pastikan NIK yang dimasukkan sudah benar.")
 
 # --- FOOTER ---
 st.markdown("---")
