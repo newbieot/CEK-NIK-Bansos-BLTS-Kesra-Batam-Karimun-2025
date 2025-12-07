@@ -38,7 +38,7 @@ with col2:
     # GANTI 'logo.png' DENGAN NAMA FILE LOGO ANDA
     # Jika belum upload gambar, kode ini akan pakai link logo Pos dari internet otomatis
     try:
-        st.image("logo.png", use_container_width=True)
+        st.image("POSIND_Logo_1. Warna (2) (2).png", use_container_width=True)
     except:
         # Cadangan: Pakai logo Pos Indonesia dari Wikipedia jika file lokal tidak ada
         st.image("https://upload.wikimedia.org/wikipedia/commons/thumb/9/96/Logo_Pos_Indonesia_%282023%29.png/640px-Logo_Pos_Indonesia_%282023%29.png", width=250)
@@ -129,3 +129,4 @@ if st.button("🔍 CEK STATUS SAYA", type="primary", use_container_width=True):
 # --- FOOTER ---
 st.markdown("---")
 st.caption("© 2025 Pos Indonesia - Penyaluran Bansos")
+
