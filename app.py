@@ -2,6 +2,7 @@ import streamlit as st
 import pandas as pd
 import io
 import qrcode
+import os
 from PIL import Image
 
 # --- LIBRARY PDF ---
@@ -46,7 +47,16 @@ def get_qr_code_image(data_text):
     img = qr.make_image(fill_color="black", back_color="white")
     return img
 
-# --- FUNGSI PEMBUAT SURAT (REVISI LOGO & KEPADA) ---
+# --- FUNGSI BANTUAN GAMBAR ---
+def gambar_safe(c, path, x, y, width, height):
+    """Menggambar logo jika file ada, jika tidak ada dilewati agar tidak error"""
+    if os.path.exists(path):
+        try:
+            c.drawImage(path, x, y, width=width, height=height, preserveAspectRatio=True, mask='auto')
+        except:
+            pass # Skip jika file rusak
+
+# --- FUNGSI PEMBUAT SURAT (REVISI FINAL) ---
 def buat_surat_pdf(data):
     buffer = io.BytesIO()
     c = canvas.Canvas(buffer, pagesize=A4)
@@ -54,55 +64,29 @@ def buat_surat_pdf(data):
     margin_x = 2*cm
     
     # ==============================
-    # 1. HEADER DENGAN 3 LOGO
+    # 1. KOP SURAT (3 LOGO)
     # ==============================
+    y_logo = height - 2.5*cm # Posisi Y Logo
     
-    # URL Logo (Mengambil dari internet agar praktis)
-    url_pos = "https://upload.wikimedia.org/wikipedia/commons/thumb/9/96/Logo_Pos_Indonesia_%282023%29.png/640px-Logo_Pos_Indonesia_%282023%29.png"
-    url_garuda = "https://upload.wikimedia.org/wikipedia/commons/thumb/e/ee/Garuda_Pancasila.svg/800px-Garuda_Pancasila.svg.png"
-    url_kemensos = "https://upload.wikimedia.org/wikipedia/commons/thumb/0/0c/Logo_of_the_Ministry_of_Social_Affairs_of_the_Republic_of_Indonesia.svg/1200px-Logo_of_the_Ministry_of_Social_Affairs_of_the_Republic_of_Indonesia.svg.png"
+    # A. Logo PosIND (Kiri)
+    gambar_safe(c, "Logo PosIND.png", margin_x, y_logo - 0.5*cm, 3.5*cm, 1.8*cm)
 
-    # Posisi Y untuk logo (Paling atas)
-    y_logo = height - 3.0*cm
-    logo_height = 2.0*cm
+    # B. Logo Garuda (Tengah)
+    # Hitung tengah halaman
+    garuda_w = 2.0*cm
+    x_garuda = (width / 2) - (garuda_w / 2)
+    gambar_safe(c, "garuda.png", x_garuda, y_logo - 0.5*cm, garuda_w, 2.0*cm)
 
-    # A. Logo Pos Indonesia (Kiri Atas)
-    try:
-        # Cek kalau ada file lokal dulu, kalau ga ada pakai URL
-        logo_pos_img = ImageReader("Logo PodIND.png") 
-    except:
-        try:
-            logo_pos_img = ImageReader(url_pos)
-        except:
-            logo_pos_img = None
-            
-    if logo_pos_img:
-        c.drawImage(logo_pos_img, margin_x, y_logo, width=3*cm, height=1.5*cm, preserveAspectRatio=True, mask='auto')
-
-    # B. Logo Garuda (Tengah Atas)
-    try:
-        logo_garuda_img = ImageReader(url_garuda)
-        garuda_width = 2.0*cm
-        # Hitung posisi tengah: (Lebar Kertas / 2) - (Lebar Logo / 2)
-        x_garuda = (width / 2) - (garuda_width / 2)
-        c.drawImage(logo_garuda_img, x_garuda, y_logo, width=garuda_width, height=logo_height, preserveAspectRatio=True, mask='auto')
-    except:
-        pass
-
-    # C. Logo Kemensos (Kanan Atas)
-    try:
-        logo_kemensos_img = ImageReader(url_kemensos)
-        kemensos_width = 3*cm
-        x_kemensos = width - margin_x - kemensos_width
-        c.drawImage(logo_kemensos_img, x_kemensos, y_logo, width=kemensos_width, height=1.5*cm, preserveAspectRatio=True, mask='auto')
-    except:
-        pass
+    # C. Logo Kemensos (Kanan)
+    kemensos_w = 3.5*cm
+    x_kemensos = width - margin_x - kemensos_w
+    gambar_safe(c, "kemensos.png", x_kemensos, y_logo - 0.5*cm, kemensos_w, 1.8*cm)
 
     # ==============================
-    # 2. JUDUL SURAT
+    # 2. HEADER JUDUL
     # ==============================
-    # Turunkan sedikit dari logo
-    y_header = y_logo - 1.0*cm
+    # Turun di bawah logo
+    y_header = y_logo - 1.5*cm
     
     c.setFont("Helvetica-Bold", 14)
     c.drawRightString(width - margin_x, y_header, "PEMBERITAHUAN")
@@ -118,14 +102,15 @@ def buat_surat_pdf(data):
     c.drawRightString(width - margin_x, y_header - 1.0*cm, batch_txt)
     
     # ==============================
-    # 3. KEPADA (REVISI: HAPUS KEMENSOS)
+    # 3. KEPADA (REVISI: HAPUS KATA KEMENSOS)
     # ==============================
     y_pos = y_header - 2.5*cm
     c.setFont("Helvetica-Bold", 10)
     c.drawString(margin_x, y_pos, "KEPADA:")
     y_pos -= 0.5*cm
+    c.drawString(margin_x, y_pos, "YTH. PENERIMA BANTUAN SOSIAL")
+    y_pos -= 0.8*cm
     
-    # (REVISI: Langsung ke Nama Penerima, kata 'Kementerian Sosial' DIHAPUS)
     # Nama Penerima (Bold)
     nama = str(data['Nama']).upper()
     c.setFont("Helvetica-Bold", 11)
@@ -150,7 +135,7 @@ def buat_surat_pdf(data):
     # ==============================
     # 4. ISI SURAT
     # ==============================
-    y_body = height - 11*cm # Mulai agak bawah biar rapi
+    y_body = height - 11*cm 
     c.setFont("Helvetica", 10)
     c.drawString(margin_x, y_body, "Dengan Hormat,")
     y_body -= 0.6*cm
@@ -208,7 +193,6 @@ def buat_surat_pdf(data):
     # ==============================
     # 5. FOOTER (TTD & QR)
     # ==============================
-    
     y_ttd_start = 5.5 * cm  
     right_align_x = width - margin_x 
     
@@ -226,7 +210,6 @@ def buat_surat_pdf(data):
     qr_img = get_qr_code_image(cekpos_val)
     
     c.drawInlineImage(qr_img, qr_x_pos, qr_y_pos, width=qr_size, height=qr_size)
-    
     c.setFont("Helvetica-Oblique", 7)
     c.drawCentredString(qr_x_pos + (qr_size/2), qr_y_pos - 0.3*cm, f"Cekpos: {cekpos_val}")
 
@@ -244,8 +227,12 @@ def buat_surat_pdf(data):
 
 col_logo, col_judul = st.columns([1, 4])
 with col_logo:
-    try: st.image("Logo PosIND.png", width=130) 
-    except: st.image("https://upload.wikimedia.org/wikipedia/commons/thumb/9/96/Logo_Pos_Indonesia_%282023%29.png/640px-Logo_Pos_Indonesia_%282023%29.png", width=130)
+    # Menggunakan Logo PosIND.png untuk tampilan website juga
+    if os.path.exists("Logo PosIND.png"):
+        st.image("Logo PosIND.png", width=130)
+    else:
+        # Cadangan jika belum upload
+        st.image("https://upload.wikimedia.org/wikipedia/commons/thumb/9/96/Logo_Pos_Indonesia_%282023%29.png/640px-Logo_Pos_Indonesia_%282023%29.png", width=130)
 
 with col_judul:
     st.markdown("""
@@ -302,7 +289,6 @@ if df is None:
     st.error("⚠️ Database belum siap.")
     st.stop()
 
-# --- FORM ---
 st.info("Silakan masukkan Nomor Induk Kependudukan (NIK) Anda.")
 nik_input = st.text_input("NIK (Sesuai KTP):", max_chars=16)
 
@@ -314,13 +300,17 @@ if st.button("🔍 CEK STATUS SAYA", type="primary", use_container_width=True):
         
         if not hasil.empty:
             data = hasil.iloc[0]
+            nama_sensor = sensor_teks(data['Nama'])
+            alamat_sensor = sensor_teks(data['Alamat'])
+            kecamatan = data['Kecamatan']
+            kelurahan = data['Kelurahan']
             
-            # Tampilan Web (Disensor)
             st.success("✅ SELAMAT! ANDA TERDAFTAR SEBAGAI PENERIMA.")
+            
             with st.container(border=True):
-                st.markdown(f"**NAMA:** \n### {sensor_teks(data['Nama'])}")
-                st.markdown(f"**ALAMAT:** \n{sensor_teks(data['Alamat'])}")
-                st.markdown(f"**WILAYAH:** \n{data['Kelurahan']}, {data['Kecamatan']}")
+                st.markdown(f"**NAMA:** \n### {nama_sensor}")
+                st.markdown(f"**ALAMAT:** \n{alamat_sensor}")
+                st.markdown(f"**WILAYAH:** \n{kelurahan}, {kecamatan}")
             
             st.markdown("---")
             st.write("### 📄 Unduh Surat Pemberitahuan")
@@ -335,7 +325,6 @@ if st.button("🔍 CEK STATUS SAYA", type="primary", use_container_width=True):
                 type="primary",
                 use_container_width=True
             )
-            
             st.warning("**Wajib membawa KTP & KK Asli saat pencairan.**")
         else:
             st.error("❌ NIK Tidak Ditemukan.")
