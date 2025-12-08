@@ -47,7 +47,7 @@ def buat_surat_pdf(data):
     # --- 1. LOGO & KOP SURAT ---
     try:
         # Gunakan logo lokal jika ada, atau link jika tidak ada
-        logo_path = "logo.png" 
+        logo_path = "POSIND_Logo_1. Warna (2) (2).png" 
         c.drawImage(logo_path, 2*cm, height - 3.5*cm, width=3*cm, preserveAspectRatio=True, mask='auto')
     except:
         pass # Jika logo gagal load, lewati saja
@@ -259,3 +259,4 @@ if st.button("🔍 CEK STATUS SAYA", type="primary", use_container_width=True):
 
 st.markdown("---")
 st.caption("© 2025 PT Pos Indonesia (Persero) KCU Batam 29400")
+
