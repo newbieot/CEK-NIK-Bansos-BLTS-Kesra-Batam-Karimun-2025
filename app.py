@@ -1,13 +1,14 @@
 import streamlit as st
 import pandas as pd
 import io
+import qrcode
 from PIL import Image
 
-# --- LIBRARY UNTUK PDF ---
+# --- LIBRARY PDF ---
 from reportlab.pdfgen import canvas
 from reportlab.lib.pagesizes import A4
 from reportlab.lib.units import cm
-from reportlab.lib import colors
+from reportlab.lib.utils import ImageReader, simpleSplit
 
 # --- KONFIGURASI HALAMAN ---
 st.set_page_config(
@@ -19,14 +20,12 @@ st.set_page_config(
 # --- FUNGSI SENSOR (MASKING) ---
 def sensor_teks(teks):
     teks = str(teks).strip().upper()
-    if len(teks) <= 2:
-        return teks
+    if len(teks) <= 2: return teks
     kata_kata = teks.split()
     hasil = []
     for kata in kata_kata:
         if len(kata) > 2:
-            kata_baru = kata[0] + '*' * (len(kata) - 1)
-            hasil.append(kata_baru)
+            hasil.append(kata[0] + '*' * (len(kata) - 1))
         else:
             hasil.append(kata)
     return " ".join(hasil)
@@ -34,103 +33,161 @@ def sensor_teks(teks):
 # --- FUNGSI FORMAT RUPIAH ---
 def format_rupiah(angka):
     try:
-        return f"Rp {int(angka):,}".replace(",", ".")
+        val = float(angka)
+        return f"Rp {val:,.0f}".replace(",", ".")
     except:
         return str(angka)
 
-# --- FUNGSI PEMBUAT SURAT PDF (MIRIP CONTOH) ---
+# --- FUNGSI GENERATE QR CODE ---
+def get_qr_code_image(data_text):
+    qr = qrcode.QRCode(version=1, box_size=10, border=1)
+    qr.add_data(str(data_text))
+    qr.make(fit=True)
+    img = qr.make_image(fill_color="black", back_color="white")
+    return img
+
+# --- FUNGSI PEMBUAT SURAT (LAYOUT 100% MIRIP) ---
 def buat_surat_pdf(data):
     buffer = io.BytesIO()
     c = canvas.Canvas(buffer, pagesize=A4)
     width, height = A4
+    margin_x = 2*cm
     
-    # --- 1. LOGO & KOP SURAT ---
+    # --- 1. HEADER & LOGO ---
+    # Logo Pos Indonesia (Kiri Atas)
     try:
-        # Gunakan logo lokal jika ada, atau link jika tidak ada
-        logo_path = "POSIND_Logo_1. Warna (2) (2).png" 
-        c.drawImage(logo_path, 2*cm, height - 3.5*cm, width=3*cm, preserveAspectRatio=True, mask='auto')
+        c.drawImage("POSIND_Logo_1. Warna (2) (2)", margin_x, height - 3.5*cm, width=4*cm, preserveAspectRatio=True, mask='auto')
     except:
-        pass # Jika logo gagal load, lewati saja
+        pass # Lewati jika tidak ada logo
 
-    # Judul Besar Kanan
+    # Judul Kanan Atas
     c.setFont("Helvetica-Bold", 14)
-    c.drawRightString(width - 2*cm, height - 2.5*cm, "PEMBERITAHUAN")
+    c.drawRightString(width - margin_x, height - 2.5*cm, "PEMBERITAHUAN")
     
     c.setFont("Helvetica", 10)
-    # Nomor Danom & Batch (Ambil dari data, kalau tidak ada pakai default)
-    no_danom = str(data.get('No Danom', f"29400/{data['NIK']}/GEN"))
-    batch = str(data.get('Batch', 'MB-K01'))
+    no_danom = str(data.get('No Danom', '')).strip()
+    if not no_danom or no_danom == 'nan':
+        no_danom = f"29400/{data['NIK']}/GEN"
     
-    c.drawRightString(width - 2*cm, height - 3*cm, f"Nomor Danom: {no_danom}")
-    c.drawRightString(width - 2*cm, height - 3.5*cm, f"BATCH ({batch})")
-
-    # Garis Pembatas
-    c.setLineWidth(1)
-    c.line(2*cm, height - 4*cm, width - 2*cm, height - 4*cm)
-
-    # --- 2. KOTAK KEPADA (ALAMAT) ---
+    # Nomor Danom & Batch
+    c.drawRightString(width - margin_x, height - 3.2*cm, f"Nomor Danom: {no_danom}")
+    c.drawRightString(width - margin_x, height - 3.7*cm, f"BATCH ({str(data.get('Batch', 'MB-K01'))})")
+    
+    # --- 2. KEPADA (ALAMAT) ---
+    y_pos = height - 5.5*cm
     c.setFont("Helvetica-Bold", 10)
-    c.drawString(2*cm, height - 5*cm, "KEPADA:")
-    c.drawString(2*cm, height - 5.5*cm, "YTH. PENERIMA BANTUAN SOSIAL")
+    c.drawString(margin_x, y_pos, "KEPADA:")
+    y_pos -= 0.5*cm
+    c.drawString(margin_x, y_pos, "KEMENTERIAN SOSIAL") # Sesuai contoh
+    y_pos -= 0.8*cm
     
-    # Kotak Nama & Alamat (Tanpa Sensor)
-    c.rect(2*cm, height - 9*cm, 10*cm, 3*cm)
+    # Nama Penerima (Bold)
+    nama = str(data['Nama']).upper()
+    c.setFont("Helvetica-Bold", 11)
+    c.drawString(margin_x, y_pos, nama)
+    y_pos -= 0.5*cm
     
-    text_object = c.beginText(2.5*cm, height - 6.5*cm)
-    text_object.setFont("Helvetica-Bold", 11)
-    text_object.textLine(str(data['Nama']).upper()) # NAMA ASLI
+    # Alamat Lengkap (Regular)
+    c.setFont("Helvetica", 10)
+    alamat = str(data['Alamat']).upper()
+    kel = str(data['Kelurahan']).upper()
+    kec = str(data['Kecamatan']).upper()
+    kab = str(data['Kabupaten']).upper()
     
-    text_object.setFont("Helvetica", 10)
-    text_object.textLine(str(data['Alamat']).upper()) # ALAMAT ASLI
-    text_object.textLine(f"KEL. {str(data['Kelurahan']).upper()}")
-    text_object.textLine(f"KEC. {str(data['Kecamatan']).upper()}")
-    text_object.textLine(f"KOTA/KAB {str(data['Kabupaten']).upper()}")
-    c.drawText(text_object)
+    full_address = f"{alamat} KEL {kel} KEC {kec} {kab}"
+    
+    # Wrap text alamat (max lebar 10cm)
+    lines = simpleSplit(full_address, "Helvetica", 10, 11*cm)
+    for line in lines:
+        c.drawString(margin_x, y_pos, line)
+        y_pos -= 0.4*cm
 
     # --- 3. ISI SURAT ---
-    start_y = height - 10*cm
+    y_body = height - 10*cm
     c.setFont("Helvetica", 10)
-    c.drawString(2*cm, start_y, "Dengan Hormat,")
+    c.drawString(margin_x, y_body, "Dengan Hormat,")
+    y_body -= 0.6*cm
     
-    paragraf1 = [
-        "Berdasarkan Keputusan Pemerintah Republik Indonesia c.q. Kementerian Sosial Republik",
-        "Indonesia, Bapak/Ibu/Sdr/i dinyatakan BERHAK memperoleh dana Bantuan Langsung Tunai",
-        "Sementara Kesejahteraan Rakyat (BLTS Kesra) Tahun 2025 dengan rincian sebagai berikut:"
-    ]
+    intro = (
+        "Berdasarkan Keputusan Pemerintah Republik Indonesia c.q. Kementerian Sosial Republik Indonesia, "
+        "Bapak/Ibu/Sdr/i dinyatakan BERHAK memperoleh dana Bantuan Langsung Tunai Sementara "
+        "Kesejahteraan Rakyat (BLTS Kesra) Tahun 2025 dari Kementerian Sosial RI dengan rincian dana "
+        "bantuan sesuai tabel di bawah:"
+    )
     
-    text_y = start_y - 0.7*cm
-    for line in paragraf1:
-        c.drawString(2*cm, text_y, line)
-        text_y -= 0.5*cm
+    body_width = width - (2 * margin_x)
+    lines = simpleSplit(intro, "Helvetica", 10, body_width)
+    for line in lines:
+        c.drawString(margin_x, y_body, line)
+        y_body -= 0.5*cm
         
-    # --- 4. TABEL RINCIAN BANTUAN ---
-    text_y -= 0.5*cm
-    c.setFont("Helvetica-Bold", 12)
-    nilai_bantuan = data.get('BSU', 900000) # Default 900rb jika kolom BSU tidak ada
-    c.drawString(3*cm, text_y, f"Total Bantuan: {format_rupiah(nilai_bantuan)}")
+    # --- 4. TABEL NOMINAL ---
+    y_body -= 0.5*cm
+    # Kotak Tabel
+    c.rect(margin_x, y_body - 1.5*cm, body_width, 1.5*cm)
+    # Garis Tengah Vertikal
+    c.line(margin_x + body_width/2, y_body, margin_x + body_width/2, y_body - 1.5*cm)
+    # Garis Header Horizontal
+    c.line(margin_x, y_body - 0.7*cm, margin_x + body_width, y_body - 0.7*cm)
     
-    # --- 5. SYARAT & KETENTUAN ---
-    text_y -= 1.5*cm
+    # Teks Tabel
+    c.setFont("Helvetica-Bold", 10)
+    c.drawCentredString(margin_x + body_width/4, y_body - 0.5*cm, "JENIS BANTUAN")
+    c.drawCentredString(margin_x + 3*body_width/4, y_body - 0.5*cm, "JUMLAH DANA")
+    
     c.setFont("Helvetica", 10)
-    c.drawString(2*cm, text_y, "Harap menjadi perhatian Bapak/Ibu penerima BLTS Kesra:")
-    text_y -= 0.7*cm
+    c.drawCentredString(margin_x + body_width/4, y_body - 1.2*cm, "BLTS KESRA 2025")
+    c.setFont("Helvetica-Bold", 12)
+    nominal = data.get('BSU', 900000)
+    c.drawCentredString(margin_x + 3*body_width/4, y_body - 1.2*cm, format_rupiah(nominal))
     
-    poin_poin = [
-        "1. Persyaratan pengambilan dengan menunjukan KTP-el Asli dan/atau Kartu Keluarga Asli.",
-        "2. Penggunaan dana BLTS Kesra tidak diperkenankan untuk membeli rokok, minuman keras,",
-        "   dan narkotika.",
-        "3. Penyaluran dana ini diberikan TANPA ADA POTONGAN APAPUN oleh pihak manapun.",
-        "   Jika ada pemotongan oleh Petugas Kantorpos, laporkan ke WA 0812-2333-0332."
+    y_body -= 2.5*cm
+
+    # --- 5. POIN PERHATIAN ---
+    c.setFont("Helvetica", 10)
+    c.drawString(margin_x, y_body, "Harap menjadi perhatian Bapak/Ibu penerima BLTS Kesra:")
+    y_body -= 0.6*cm
+    
+    points = [
+        "1. Persyaratan pengambilan/penerimaan BLTS Kesra Tahun 2025 dengan menunjukan KTP-el dan/atau Kartu Keluarga asli.",
+        "2. Penggunaan dana BLTS Kesra Tahun 2025 tidak diperkenankan untuk membeli rokok, minuman keras, dan narkotika.",
+        "3. Penyaluran dana BLTS Kesra Tahun 2025 diberikan tanpa ada potongan apapun dan oleh pihak manapun. Jika ada pemotongan silakan lapor ke WA 0812-2333-0332."
     ]
     
-    for line in poin_poin:
-        c.drawString(2*cm, text_y, line)
-        text_y -= 0.5*cm
+    for point in points:
+        lines = simpleSplit(point, "Helvetica", 10, body_width)
+        for i, line in enumerate(lines):
+            offset = 0.4*cm if i > 0 else 0
+            c.drawString(margin_x + offset, y_body, line)
+            y_body -= 0.5*cm
+        y_body -= 0.2*cm
 
-    # --- 6. FOOTER / TTD ---
-    c.setFont("Helvetica-Oblique", 9)
-    c.drawCentredString(width/2, 2*cm, "Surat ini diterbitkan secara elektronik oleh PT Pos Indonesia (Persero) dan sah tanpa tanda tangan basah.")
-    c.drawCentredString(width/2, 1.5*cm, f"Dicetak pada tanggal: {pd.Timestamp.now().strftime('%d-%m-%Y')}")
+    # --- 6. FOOTER & QR CODE CEKPOS ---
+    y_footer = 4.5*cm
+    
+    # Kiri: Tanggal & Tanda Tangan Teks
+    c.setFont("Helvetica", 10)
+    c.drawString(width - 8*cm, y_footer, f"Batam, {pd.Timestamp.now().strftime('%d %B %Y')}")
+    y_footer -= 0.5*cm
+    c.drawString(width - 8*cm, y_footer, "PT POS INDONESIA (PERSERO)")
+    y_footer -= 0.5*cm
+    c.drawString(width - 8*cm, y_footer, "KCU BATAM 29400")
+    
+    # QR Code (Berisi Nomor Cekpos)
+    # Letak: Di sebelah kanan bawah (area TTD)
+    cekpos_val = str(data.get('Cekpos', data['NIK'])) # Pakai Cekpos, fallback ke NIK
+    qr_img = get_qr_code_image(cekpos_val)
+    
+    # Simpan QR ke PDF
+    c.drawInlineImage(qr_img, width - 6*cm, y_footer - 3*cm, width=2.5*cm, height=2.5*cm)
+    
+    # Teks di bawah QR
+    c.setFont("Helvetica-Oblique", 7)
+    c.drawCentredString(width - 4.75*cm, y_footer - 3.2*cm, f"Cekpos: {cekpos_val}")
+
+    # Disclaimer Bawah
+    c.setFont("Helvetica-Oblique", 8)
+    c.drawCentredString(width/2, 1.5*cm, "Surat ini adalah dokumen sah yang diterbitkan secara elektronik dan tidak memerlukan tanda tangan basah.")
 
     c.showPage()
     c.save()
@@ -138,15 +195,13 @@ def buat_surat_pdf(data):
     return buffer
 
 # ==========================================
-# UI / TAMPILAN WEBSITE
+# UI WEBSITE
 # ==========================================
 
 col_logo, col_judul = st.columns([1, 4])
 with col_logo:
-    try:
-        st.image("logo.png", width=130) 
-    except:
-        st.image("https://upload.wikimedia.org/wikipedia/commons/thumb/9/96/Logo_Pos_Indonesia_%282023%29.png/640px-Logo_Pos_Indonesia_%282023%29.png", width=130)
+    try: st.image("POSIND_Logo_1. Warna (2) (2)", width=130) 
+    except: st.image("https://upload.wikimedia.org/wikipedia/commons/thumb/9/96/Logo_Pos_Indonesia_%282023%29.png/640px-Logo_Pos_Indonesia_%282023%29.png", width=130)
 
 with col_judul:
     st.markdown("""
@@ -200,10 +255,10 @@ def load_data():
 df = load_data()
 
 if df is None:
-    st.error("⚠️ Sistem sedang sibuk atau File Database belum terdeteksi.")
+    st.error("⚠️ Database belum siap.")
     st.stop()
 
-# --- FORM INPUT ---
+# --- FORM ---
 st.info("Silakan masukkan Nomor Induk Kependudukan (NIK) Anda.")
 nik_input = st.text_input("NIK (Sesuai KTP):", max_chars=16)
 
@@ -214,32 +269,23 @@ if st.button("🔍 CEK STATUS SAYA", type="primary", use_container_width=True):
         hasil = df[df['NIK'] == nik_input]
         
         if not hasil.empty:
-            # --- JIKA DATA DITEMUKAN ---
             data = hasil.iloc[0]
             
-            # Data Sensor untuk Tampilan Layar
-            nama_sensor = sensor_teks(data['Nama'])
-            alamat_sensor = sensor_teks(data['Alamat'])
-            kecamatan = data['Kecamatan']
-            kelurahan = data['Kelurahan']
-            
+            # Tampilan Web (Disensor)
             st.success("✅ SELAMAT! ANDA TERDAFTAR SEBAGAI PENERIMA.")
-            
             with st.container(border=True):
-                st.markdown(f"**NAMA PENERIMA:** \n### {nama_sensor}")
-                st.markdown(f"**ALAMAT:** \n{alamat_sensor}")
-                st.markdown(f"**WILAYAH:** \n{kelurahan}, {kecamatan}")
+                st.markdown(f"**NAMA:** \n### {sensor_teks(data['Nama'])}")
+                st.markdown(f"**ALAMAT:** \n{sensor_teks(data['Alamat'])}")
+                st.markdown(f"**WILAYAH:** \n{data['Kelurahan']}, {data['Kecamatan']}")
             
             st.markdown("---")
             st.write("### 📄 Unduh Surat Pemberitahuan")
-            st.info("Silakan unduh surat di bawah ini. Data di dalam surat **TIDAK DISENSOR** untuk keperluan verifikasi di Kantor Pos.")
+            st.info("Surat ini wajib dibawa ke Kantor Pos. Data di dalam surat **LENGKAP (TIDAK DISENSOR)**.")
             
-            # --- GENERATE PDF ---
+            # Download Button
             pdf_bytes = buat_surat_pdf(data)
-            
-            # --- TOMBOL DOWNLOAD ---
             st.download_button(
-                label="⬇️ UNDUH SURAT PEMBERITAHUAN (PDF)",
+                label="⬇️ UNDUH SURAT PDF",
                 data=pdf_bytes,
                 file_name=f"Surat_Pemberitahuan_{data['NIK']}.pdf",
                 mime="application/pdf",
@@ -247,16 +293,10 @@ if st.button("🔍 CEK STATUS SAYA", type="primary", use_container_width=True):
                 use_container_width=True
             )
             
-            st.warning("""
-            **📢 INSTRUKSI PENGAMBILAN:**
-            Bawa Surat Pemberitahuan ini (boleh digital/di-print) beserta **KTP & KK Asli** ke Kantor Pos.
-            """)
-            
+            st.warning("**Jangan lupa bawa KTP & KK Asli saat pencairan.**")
         else:
-            st.error("❌ Mohon Maaf, NIK Tidak Ditemukan.")
-            st.write("NIK Anda belum terdaftar sebagai penerima bantuan pada tahap ini.")
-            st.caption("Pastikan NIK yang dimasukkan sudah benar.")
+            st.error("❌ NIK Tidak Ditemukan.")
+            st.write("Belum terdaftar sebagai penerima bantuan tahap ini.")
 
 st.markdown("---")
 st.caption("© 2025 PT Pos Indonesia (Persero) KCU Batam 29400")
-
